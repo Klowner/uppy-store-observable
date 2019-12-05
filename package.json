@@ -1,0 +1,40 @@
+{
+  "name": "@klowner/uppy-store-observable",
+  "version": "0.0.1",
+  "description": "A fairly simple observable-based store for Uppy.",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watchAll",
+    "build": "babel src/index.js -o lib/index.js -s",
+    "lint:staged": "lint-staged",
+    "lint": "eslint src --cache"
+  },
+  "author": "Mark Riedesel <mark@klowner.com>",
+  "license": "MIT",
+  "lint-staged": {
+    "*.js": "eslint"
+  },
+  "pre-commit": "lint:staged",
+  "devDependencies": {
+    "@babel/cli": "^7.7.4",
+    "@babel/core": "^7.7.4",
+    "@babel/plugin-proposal-class-properties": "^7.7.4",
+    "@babel/plugin-transform-object-assign": "^7.7.4",
+    "@babel/preset-env": "^7.7.4",
+    "babel-eslint": "^10.0.3",
+    "eslint": "^6.7.2",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-compat": "^3.3.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jest": "^23.1.1",
+    "eslint-plugin-jsdoc": "^18.4.3",
+    "eslint-plugin-node": "^10.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "jest": "^24.9.0"
+  },
+  "dependencies": {
+    "rxjs": "^6.5.3"
+  }
+}
