@@ -1,5 +1,5 @@
 const { Subject, ReplaySubject } = require('rxjs')
-const { share, multicast, map, shareReplay, concatMap, take } = require('rxjs/operators')
+const { distinctUntilChanged, multicast, map, shareReplay, concatMap, take } = require('rxjs/operators')
 
 class ObservableStore {
   static VERSION = require('../package.json').version
@@ -21,7 +21,7 @@ class ObservableStore {
 
     this.currentState$ = this.mergedChange$.pipe(
       map(([prevState, newState, change]) => newState),
-      share()
+      shareReplay(1)
     )
 
     this.applyChange$ = this.currentState$.pipe(
@@ -35,12 +35,11 @@ class ObservableStore {
 
   getState () {
     let state
-    const sub = this.state$.pipe(
+    this.state$.pipe(
       take(1)
     ).subscribe(_state => {
       state = _state
     })
-    sub.unsubscribe()
     return state
   }
 
@@ -52,14 +51,31 @@ class ObservableStore {
     return this.newState$.asObservable()
   }
 
-  asObservable () {
-    return this.currentState$.asObservable()
+  asObservable (selector = null) {
+    let state$ = this.currentState$
+    if (selector) {
+      state$ = state$.pipe(this._createFilter(selector))
+    }
+    return state$.asObservable()
   }
 
   subscribe (listener) {
     return this.mergedChange$.subscribe(params => {
       listener(...params)
     })
+  }
+
+  _createFilter (selector) {
+    const empty = {}
+    const selectorParts = selector.split('.')
+    const extract = input =>
+      selectorParts
+        .reduce((acc, cur) => acc[cur] || empty, input)
+
+    return input$ => input$.pipe(
+      map(input => extract(input)),
+      distinctUntilChanged()
+    )
   }
 }
 

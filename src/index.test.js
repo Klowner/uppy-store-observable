@@ -41,4 +41,45 @@ describe('ObservableStore', () => {
 
     expect(calls).toBe(2)
   })
+
+  it('can expose state subqueries as observables', () => {
+    let expected = {}
+    let calls = 0
+
+    function listener (state) {
+      calls++
+      expect(state).toEqual(expected)
+    }
+
+    function unrelatedListener (state) {
+      // TODO - this emits {} before it's set in the state during the first setState :[
+      // expect(state).toEqual('changes')
+    }
+
+    const store = ObservableStore()
+    const fileResponse$ = store.asObservable('files.response')
+    const sub = fileResponse$.subscribe(listener)
+    const unrelatedResponse$ = store.asObservable('unrelated')
+    const sub2 = unrelatedResponse$.subscribe(unrelatedListener)
+
+    expected = [1, 2, 3]
+    store.setState({ files: { response: [1, 2, 3] } })
+
+    // shouldn't call with unrelated path update
+    expect(calls).toBe(1)
+    store.setState({ unrelated: {} })
+    expect(calls).toBe(1)
+
+    expected = ['hello']
+    store.setState({ files: { response: ['hello'] } })
+
+    expected = {}
+    store.setState({ files: null })
+
+    expect(calls).toBe(3)
+
+    sub.unsubscribe()
+    sub2.unsubscribe()
+    return new Promise(resolve => setTimeout(resolve, 0)) // rxjs throws error on next tick
+  })
 })
