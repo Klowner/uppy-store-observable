@@ -1,35 +1,36 @@
-const { of, merge, Subject } = require('rxjs')
-const { map, shareReplay, switchMap, take } = require('rxjs/operators')
+const { Subject, ReplaySubject } = require('rxjs')
+const { share, multicast, map, shareReplay, concatMap, take } = require('rxjs/operators')
 
 class ObservableStore {
   static VERSION = require('../package.json').version
 
-  constructor () {
+  constructor (initialState = {}) {
     this.change$ = new Subject()
+    this.state$ = new ReplaySubject(1)
 
-    this.buildChange$ = this.change$.pipe(
-      switchMap(patch => this.state$.pipe(
+    this.mergedChange$ = this.change$.pipe(
+      concatMap(change => this.state$.pipe(
+        take(1),
         map(currentState => {
-          const newState = {
-            ...currentState,
-            ...patch
-          }
-          return [currentState, newState, patch]
-        }),
-        take(1)
-      ))
-    )
-
-    this.mergeChange$ = this.buildChange$.pipe(
-      map(([currentState, newState, patch]) => newState)
-    )
-
-    this.state$ = merge(
-      of({}),
-      this.mergeChange$
-    ).pipe(
+          const newState = { ...currentState, ...change }
+          return [currentState, newState, change]
+        })
+      )),
       shareReplay(1)
     )
+
+    this.currentState$ = this.mergedChange$.pipe(
+      map(([prevState, newState, change]) => newState),
+      share()
+    )
+
+    this.applyChange$ = this.currentState$.pipe(
+      shareReplay(1),
+      multicast(this.state$)
+    )
+
+    this.state$.next({})
+    this.applyChange$.connect()
   }
 
   getState () {
@@ -48,16 +49,20 @@ class ObservableStore {
   }
 
   getState$ () {
-    return this.state$.asObservable()
+    return this.newState$.asObservable()
+  }
+
+  asObservable () {
+    return this.currentState$.asObservable()
   }
 
   subscribe (listener) {
-    return this.buildChange$.subscribe(([currentState, newState, patch]) =>
-      listener(currentState, newState, patch)
-    )
+    return this.mergedChange$.subscribe(params => {
+      listener(...params)
+    })
   }
 }
 
-module.exports = function observableStore () {
+module.exports = function observableStore (initialState) {
   return new ObservableStore()
 }
